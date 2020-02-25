@@ -1,0 +1,118 @@
+
+Suppose we have 2 clients and a server
+
+
+Start server and clients using following commands:
+
+    python3 server.py -p 9000 -w 3
+    python3 client.py -p 9000 -u client1 -w 3
+    python3 client.py -p 9000 -u client2 -w 3
+
+Now, Client1 inputs following three messages:
+
+    list
+    msg 1 client2 hello!
+    msg 3 client2 client1 client4 hello again!
+
+
+And then, client2 inputs following [suppose there is a file abc.txt that contains some text]:
+
+    list
+    file 1 client1 abc.txt
+
+
+After the completion of above commands, both clients input quit and shutdown.
+
+
+Now, after all the above commands execution, Server will have following messages on screen:
+
+    join: client1
+    join: client2
+    request_users_list: client1
+    msg: client1
+    msg: client1
+    msg: client1 to non-existent user client4
+    request_users_list: client2
+    file: client2
+
+
+Client1 terminal output will look something like that:
+    
+    list: client1 client2
+    msg: client1: hello again!
+    file: client2: abc.txt 
+    quitting
+
+Client2 terminal output will look something like this:
+    
+    msg: client1: hello!
+    msg: client1: hello again!
+    list: client1 client2
+    quitting
+
+
+The packets that will be exchanged between server and clients will be as follows:
+
+####  No Packet Loss/ No duplicate Packets/ No packet corruption
+client1 -> server:  start|1439||<checksum>
+server  -> client1: ack|1440||<checksum>
+client1 -> server:  data|1440|JOIN 7 client1|<checksum>
+server  -> client1: ack|1441||<checksum>
+client1 -> server:  end|1441||<checksum>
+server  -> client1: ack|1442||<checksum>
+
+
+####  ACK LOSS
+client2 -> server:  start|143||<checksum>
+server  -> client2: ack|144||<checksum>  =====> x (If this ack gets lost, server will do nothing. Client will have a timeout and will resend the packet.)
+client2 -> server:  start|143||<checksum>
+server  -> client2: ack|144||<checksum>
+client2 -> server:  data|144|JOIN 7 client2|<checksum>
+server  -> client2: ack|145||<checksum>
+client2 -> server:  end|145||<checksum>
+server  -> client2: ack|1446||<checksum>
+
+
+### The remaining messages will be sent in the same way as above. 
+
+client1 -> server: data|0|REQUEST_USERS_LIST 0 |<checksum>
+server -> client1: data|0|RESPONSE_USERS_LIST 17 2 client1 client2|<checksum>
+
+client1 -> server: data|0|SEND_MESSAGE 16 1 client2 hello!|<checksum>
+server -> client2: data|0|FORWARD_MESSAGE 16 1 client1 hello!|<checksum>
+
+client1 -> server: data|0|SEND_MESSAGE 38 3 client2 client1 client4 hello again!|<checksum>
+server -> client1: data|0|FORWARD_MESSAGE 22 1 client1 hello again!|<checksum>
+server -> client2: data|0|FORWARD_MESSAGE 22 1 client1 hello again!|<checksum>
+
+client2 -> server: data|0|REQUEST_USERS_LIST 0 |<checksum>
+server -> client2: data|0|RESPONSE_USERS_LIST 17 2 client1 client2|<checksum>
+client2 -> server: data|0|SEND_FILE {file_length+18} 1 client1 abc.txt {file_data}|<checksum>
+server -> client1: data|0|FORWARD_FILE {file_length+18} 1 client2 abc.txt {file_data}|<checksum>
+
+
+
+### In case of a Large message like a large File (> 1400 Bytes bcz in this part every message should be of size <= 1400 Bytes), 
+### we will have to split the message into chunks and send chunks according to window size like that:
+
+Suppose we have a message of size 7100 Bytes. We will make 6 chunks of sizes (1400, 1400 x4 , 100) and will send as follow (if window size is 3):
+
+
+client1 -> server:  start|1439||<checksum>
+server  -> client1: ack|1440||<checksum>
+
+client1 -> server:  data|1440|SEND_MESSAGE 1382 <message-first-1382-Bytes>|<checksum>
+client1 -> server:  data|1441|<message-second-1400-Bytes>|<checksum>
+client1 -> server:  data|1442|<message-third-1400-Bytes>|<checksum>
+server  -> client1: ack|1441||<checksum>                          -------->           (server will probably get first message first, and will send its ACK)
+client1 -> server:  data|1443|<message-fourth-1400-Bytes>|<checksum>
+server  -> client1: ack|1442||<checksum>
+client1 -> server:  data|1444|<message-fifth-1400-Bytes>|<checksum>
+server  -> client1: ack|1443||<checksum>
+client1 -> server:  data|1445|<message-last-118-Bytes>|<checksum>
+server  -> client1: ack|1444||<checksum>
+server  -> client1: ack|1445||<checksum>
+server  -> client1: ack|1446||<checksum>
+
+client1 -> server:  end|1446||<checksum>
+server  -> client1: ack|1447||<checksum>

@@ -1,0 +1,10 @@
+join: client2
+join: client3
+join: client1
+msg: client1
+msg: client1 to non-existent user client4
+msg: client2
+msg: client2 to non-existent user client0
+disconnected: client3
+disconnected: client1
+disconnected: client2
