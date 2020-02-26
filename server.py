@@ -119,6 +119,7 @@ class Server:
             msg = message.split()
             msg_cmd = msg[0]
             res = ''
+           
             if msg_cmd == "join":
                 if len(self.clients) < MAX_NUM_CLIENTS:
                     duplicate_flag = False
@@ -151,10 +152,12 @@ class Server:
                         self.send_tcp(res,addr)
                         sender = s
                 print("request_users_list:",sender)
+            
             elif msg_cmd == "disconnect":
                 client_to_disconnect = msg[2]
                 self.clients.pop(client_to_disconnect)
                 print("disconnected:",client_to_disconnect)
+            
             elif msg_cmd == "send_message":
                 total_recievers = msg[2]
                 total_recievers = int(total_recievers)
@@ -178,8 +181,10 @@ class Server:
                     if not r in self.clients:
                         print("msg:",sender,"to non-existent user",r)
                     else:
-                        res_packet = util.make_packet("data",0,res)
-                        self.send_res(res_packet,self.clients[r])
+                        # res_packet = util.make_packet("data",0,res)
+                        # self.send_res(res_packet,self.clients[r])
+                        self.send_tcp(res,self.clients[r])
+            
             elif msg_cmd == "send_file":
                 total_recievers = msg[2]
                 total_recievers = int(total_recievers)
@@ -196,8 +201,6 @@ class Server:
                 d = msg_unsplit.split("<delimtter>")
 
                 text = d[1]
-               
-
                 tmp = "1 " + sender + " " + file_name + " <delimtter>" + text
                 res = util.make_message("forward_file",4,tmp)
                 print("file:",sender)
@@ -208,6 +211,7 @@ class Server:
                     else:
                         res_packet = util.make_packet("data",0,res)
                         self.send_res(res_packet,self.clients[r])
+            
             else:
                 res_packet = util.make_packet("data",0,ERR_UNKNOWN_MESSAGE)
                 self.send_res(res_packet,addr)
@@ -258,6 +262,9 @@ class Server:
                     start = True
                 if p_type == "end":
                     end = True
+                #dont send acknowledgment for acknowledgment
+                tmp = message.split()
+
                 if p_type != "ack":
                     self.send_ack(packet,addr)
 

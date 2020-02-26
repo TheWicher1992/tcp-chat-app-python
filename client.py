@@ -110,6 +110,28 @@ class Client:
         self.end_conn()
         
 
+    def extract_message(self,cmd):
+        to_clients = ""
+        no_clients = cmd[1]
+        no_clients = int(no_clients)
+
+        for i in range(2,no_clients+2):
+            to_clients = to_clients + cmd[i] + " "
+
+        to_clients = to_clients.strip()
+        
+        msg_to_send = ""
+        for i in range(no_clients+2,len(cmd)):
+            msg_to_send = msg_to_send + cmd[i] + " "
+    
+        msg_to_send = msg_to_send.strip()
+    
+        tmp = str(no_clients) + " " + to_clients + " " + msg_to_send
+        tmp = tmp.strip()
+        print("size of the message",len(tmp))
+        return tmp
+
+
     def start(self):
         '''
         Main Loop is here   
@@ -127,7 +149,6 @@ class Client:
       
         # handle commands in this loop
         while True:
-            #time.sleep(2)
             cmd = input()
             cmd = cmd.split()
             cmd_type = cmd[0]
@@ -149,27 +170,28 @@ class Client:
             elif cmd_type == "msg":
             
                 try:
-                    to_clients = ""
-                    no_clients = cmd[1]
-                    no_clients = int(no_clients)
+                    # to_clients = ""
+                    # no_clients = cmd[1]
+                    # no_clients = int(no_clients)
 
-                    for i in range(2,no_clients+2):
-                        to_clients = to_clients + cmd[i] + " "
+                    # for i in range(2,no_clients+2):
+                    #     to_clients = to_clients + cmd[i] + " "
 
-                    to_clients = to_clients.strip()
+                    # to_clients = to_clients.strip()
                     
-                    msg_to_send = ""
-                    for i in range(no_clients+2,len(cmd)):
-                        msg_to_send = msg_to_send + cmd[i] + " "
+                    # msg_to_send = ""
+                    # for i in range(no_clients+2,len(cmd)):
+                    #     msg_to_send = msg_to_send + cmd[i] + " "
                 
-                    msg_to_send = msg_to_send.strip()
+                    # msg_to_send = msg_to_send.strip()
                 
-                    tmp = str(no_clients) + " " + to_clients + " " + msg_to_send
-                    tmp = tmp.strip()
+                    # tmp = str(no_clients) + " " + to_clients + " " + msg_to_send
+                    # tmp = tmp.strip()
+
+                    tmp = self.extract_message(cmd)
                     
                     req = util.make_message("send_message",4,tmp)
-                    packet = util.make_packet("data",0,req)
-                    self.send_req(packet)
+                    self.send_tcp(req)
                 except:
                     print("arguments to \"msg\" are incomplete")
                     print("enter \"help\"")
