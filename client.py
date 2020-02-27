@@ -135,9 +135,9 @@ class Client:
             #time.sleep(2)
             try:
                 #num_of_pckt_rcvd = self.ack_buffer - seqno
-                tmp = self.ack_queue.get(timeout=5)
+                tmp = self.ack_queue.get(timeout=0.5)
                 print("ack---------->>>>>>",tmp)
-                num_of_pckt_rcvd = tmp - seqno
+                num_of_pckt_rcvd = int(tmp) - seqno
                 #ack = self.ack_queue.get(timeout=0.5)
                 if (num_of_pckt_rcvd > 0):
                     print("sliding window forward by",num_of_pckt_rcvd)
