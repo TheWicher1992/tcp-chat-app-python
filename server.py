@@ -6,6 +6,7 @@ import getopt
 import socket
 import util
 import time
+import random
 from threading import Thread
 
 
@@ -57,8 +58,9 @@ class Server:
         self.packet_buff.pop(addr)        
         
 
-    def incrementPacketn(self):
-        self.packet_num = self.packet_num+1
+    def incrementPacketn(self,packn):
+        packn = packn+1
+        return packn
 
     def waitAndreSend(self,packet,addr):
         msg_type,seqno,message,checksum = util.parse_packet(packet)
@@ -83,25 +85,25 @@ class Server:
 
 
 
-    def start_conn(self,addr):
-        self.incrementPacketn()
-        start = util.make_packet("start",self.packet_num,"")
+    def start_conn(self,addr,packNum):
+        start = util.make_packet("start",packNum,"")
         self.send_res(start,addr)
         self.startWaitAndResend(start,addr)
     
-    def end_conn(self,addr):
-        self.incrementPacketn()
-        end = util.make_packet("end",self.packet_num,"")
+    def end_conn(self,addr,packNum):
+        end = util.make_packet("end",packNum,"")
         self.send_res(end,addr)
         self.startWaitAndResend(end,addr)
 
-    def send_tcp(self,packet,addr):
-        self.start_conn(addr)
-        self.incrementPacketn()
-        res_packet = util.make_packet("data",self.packet_num,packet)
+    def send_tcp(self,packet,addr,packNum):
+        packNum = self.incrementPacketn(packNum)
+        self.start_conn(addr,packNum)
+        packNum = self.incrementPacketn(packNum)
+        res_packet = util.make_packet("data",packNum,packet)
         self.send_res(res_packet,addr)
         self.waitAndreSend(res_packet,addr)
-        self.end_conn(addr)
+        packNum = self.incrementPacketn(packNum)
+        self.end_conn(addr,packNum)
                         
 
 
@@ -110,6 +112,7 @@ class Server:
         ERR_SERVER_FULL = "err_server_full 0"
         ERR_USERNAME_UNAVAILABLE = "err_username_unavailable 0"
         ERR_UNKNOWN_MESSAGE = "err_unknown_message 0"
+        packet_number = random.randint(0, 40000)
         all_packets = self.getPacketsFromBuffer(addr)
         print("packets",all_packets)
         msg_type,seqno,message,checksum = util.parse_packet(all_packets[1])
@@ -129,14 +132,14 @@ class Server:
 
                     if duplicate_flag:
                         res = ERR_USERNAME_UNAVAILABLE
-                        self.send_tcp(res,addr)
+                        self.send_tcp(res,addr,packet_number)
                         print("disconnected: username unavailable")
                     if not duplicate_flag:
                         self.clients[msg[2]] = addr
                         print("join:",msg[2])
                 else:
                     res = ERR_SERVER_FULL
-                    self.send_tcp(res,addr)
+                    self.send_tcp(res,addr,packet_number)
                     print("disconnected: server full")
 
             elif msg_cmd == "request_users_list":
@@ -149,7 +152,7 @@ class Server:
                 for s in self.clients:
                     if self.clients[s] == addr:
                         res = util.make_message("response_users_list",3,tmp)
-                        self.send_tcp(res,addr)
+                        self.send_tcp(res,addr,packet_number)
                         sender = s
                 print("request_users_list:",sender)
             
@@ -183,7 +186,7 @@ class Server:
                     else:
                         # res_packet = util.make_packet("data",0,res)
                         # self.send_res(res_packet,self.clients[r])
-                        self.send_tcp(res,self.clients[r])
+                        self.send_tcp(res,self.clients[r],packet_number)
             
             elif msg_cmd == "send_file":
                 total_recievers = msg[2]
@@ -209,8 +212,8 @@ class Server:
                     if not r in self.clients:
                         print("file:",sender,"to non-existent user",r)
                     else:
-                        res_packet = util.make_packet("data",0,res)
-                        self.send_res(res_packet,self.clients[r])
+                        #res_packet = util.make_packet("data",0,res)
+                        self.send_tcp(res,self.clients[r],packet_number)
             
             else:
                 res_packet = util.make_packet("data",0,ERR_UNKNOWN_MESSAGE)

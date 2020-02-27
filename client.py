@@ -34,6 +34,7 @@ class Client:
         self.packet_buff = {}
         self.packet_history = {}
         self.ack_buffer = -1
+        self.ack_queue = queue.Queue()
         
         self.packet_num = -1
         self.window = window_size
@@ -76,18 +77,25 @@ class Client:
                     t_time = 0
                     self.send_req(packet)
 
+    def reset_ack_queue(self):
+        while not self.ack_queue.empty():
+            self.ack_queue.get()
 
     def start_conn(self):
         self.incrementPacketn()
         start = util.make_packet("start",self.packet_num,"")
         self.send_req(start)
         self.waitAndreSend(start)
+        self.ack_queue.queue.clear
+        self.reset_ack_queue()
     
     def end_conn(self):
         self.incrementPacketn()
         end = util.make_packet("end",self.packet_num,"")
         self.send_req(end)
         self.waitAndreSend(end)
+        self.reset_ack_queue()
+
 
     def send_tcp(self,req):
         self.start_conn()
@@ -97,7 +105,99 @@ class Client:
         self.waitAndreSend(packet)
         self.end_conn()
 
+
+    def send_window_tcp(self,chunks):
+        self.start_conn()
+        '''
+        send using window. to be implemented    
+        
+        '''
+        b = 0
+        w = self.window
+        sent = False
+        seqno = self.packet_num + 1
+        packet_history = []     
+
+        for i in range(0,len(chunks)):
+            self.incrementPacketn()
+            chunks[i] = util.make_packet("data",self.packet_num,chunks[i])   
+
+        to_send = 0
+        t_time = 0
+        while b < len(chunks):
+            while to_send < b + w and to_send < len(chunks):
+                
+                packet = chunks[to_send]
+                packet_history.append(packet)
+                self.send_req(packet)
+                to_send = to_send + 1
+            #while (True):
+            #time.sleep(2)
+            try:
+                #num_of_pckt_rcvd = self.ack_buffer - seqno
+                tmp = self.ack_queue.get(timeout=5)
+                print("ack---------->>>>>>",tmp)
+                num_of_pckt_rcvd = tmp - seqno
+                #ack = self.ack_queue.get(timeout=0.5)
+                if (num_of_pckt_rcvd > 0):
+                    print("sliding window forward by",num_of_pckt_rcvd)
+                    
+                    b = b + num_of_pckt_rcvd
+                    seqno = seqno + num_of_pckt_rcvd 
+                    
+                #else:
+                    #to_send = b
+                    #break
+                # time.sleep(0.1)
+                # t_time=t_time+1
+                #if t_time == 5:
+            except:
+                #t_time = 0
+                to_send = b
+                #break            
+
+
+
+
+
+        # while to_send < b + w and b<len(chunks):
+            
+        #     self.incrementPacketn()
+        #     packet = util.make_packet("data",self.packet_num,chunks[to_send])
+        #     packet_history.append(packet)
+        #     self.send_req(packet)
+        #     to_send = to_send + 1
+        #     if(to_send % w ==0 or to_send == len(chunks)):
+        #         t_time = 0
+        #         while (True):
+        #             num_of_pckt_rcvd = self.ack_buffer - seqno
+        #             if (num_of_pckt_rcvd > 0) and not(to_send >= len(chunks)):
+        #                 print("sliding window forward")
+        #                 b = b + num_of_pckt_rcvd
+        #                 seqno = seqno + num_of_pckt_rcvd 
+        #                 break
+        #             time.sleep(0.1)
+        #             t_time=t_time+1
+        #             if t_time == 5:
+        #                 t_time = 0
+        #                 to_send = b
+        #                 break
+                            
+                    
+
+            
+            
+
+            
+
+
+
+
+        self.end_conn()
+
+
     def join(self):
+        
         req = ""
         self.start_conn()
 
@@ -114,7 +214,7 @@ class Client:
         to_clients = ""
         no_clients = cmd[1]
         no_clients = int(no_clients)
-
+        print(cmd)
         for i in range(2,no_clients+2):
             to_clients = to_clients + cmd[i] + " "
 
@@ -128,8 +228,31 @@ class Client:
     
         tmp = str(no_clients) + " " + to_clients + " " + msg_to_send
         tmp = tmp.strip()
-        print("size of the message",len(tmp))
         return tmp
+
+    def extract_file(self,cmd):
+        to_clients = ""
+        no_clients = cmd[1]
+        no_clients = int(no_clients)
+
+        for i in range(2,no_clients+2):
+            to_clients = to_clients + cmd[i] + " "
+
+        to_clients = to_clients.strip()
+        file_name = cmd[len(cmd)-1]
+        try:
+            f = open(file_name,'r')
+            file_data = f.read()
+            tmp = str(no_clients) + " " + to_clients + " " + file_name + " <delimtter>" + file_data
+
+            # packet = util.make_packet("data",0,req)
+        
+            f.close()
+            return tmp
+        except:
+            print("file not found")
+
+        
 
 
     def start(self):
@@ -150,6 +273,7 @@ class Client:
         # handle commands in this loop
         while True:
             cmd = input()
+            print("input",cmd)
             cmd = cmd.split()
             cmd_type = cmd[0]
             
@@ -169,61 +293,60 @@ class Client:
             
             elif cmd_type == "msg":
             
-                try:
-                    # to_clients = ""
-                    # no_clients = cmd[1]
-                    # no_clients = int(no_clients)
-
-                    # for i in range(2,no_clients+2):
-                    #     to_clients = to_clients + cmd[i] + " "
-
-                    # to_clients = to_clients.strip()
-                    
-                    # msg_to_send = ""
-                    # for i in range(no_clients+2,len(cmd)):
-                    #     msg_to_send = msg_to_send + cmd[i] + " "
-                
-                    # msg_to_send = msg_to_send.strip()
-                
-                    # tmp = str(no_clients) + " " + to_clients + " " + msg_to_send
-                    # tmp = tmp.strip()
+               # try:
+                   
 
                     tmp = self.extract_message(cmd)
-                    
                     req = util.make_message("send_message",4,tmp)
-                    self.send_tcp(req)
-                except:
-                    print("arguments to \"msg\" are incomplete")
-                    print("enter \"help\"")
+                    print("message:",tmp)
+                    print("length:",len(req))
+                    # stri = "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"
+                    # print("actual length",len(stri))
+
+                    if len(req) <= 1400:
+                        self.send_tcp(req)
+                    else:
+                        numberOfPackets = int(len(req)/1400)+1
+                        chunks = []
+                        size = 1400
+                        for i in range(0,numberOfPackets):
+                            chunks.append(req[i*size:(i+1)*size])
+                        tmp_str = ""                 
+                        tmp_str = chunks[0]
+                        tmp_str = tmp_str[18:]
+                        chunks[0] = util.make_message("send_message",4,tmp_str)
+                        self.send_window_tcp(chunks)
+
+ 
+            #   #  except:
+            #         print("arguments to \"msg\" are incomplete")
+            #         print("enter \"help\"")
                     
                 
             elif cmd_type == "file":
-                try:
+                #try:
+                tmp = self.extract_file(cmd)
+                req = util.make_message("send_file",4,tmp)
+                print("length:",len(req))
 
-                    to_clients = ""
-                    no_clients = cmd[1]
-                    no_clients = int(no_clients)
+                if len(req) <= 1400:
+                    self.send_tcp(req)
+                else:
+                    numberOfPackets = int(len(req)/1400)+1
+                    chunks = []
+                    size = 1400
+                    for i in range(0,numberOfPackets):
+                        chunks.append(req[i*size:(i+1)*size])
+                    tmp_str = ""                 
+                    tmp_str = chunks[0]
+                    tmp_str = tmp_str[15:]
+                    chunks[0] = util.make_message("send_file",4,tmp_str)
+                    self.send_window_tcp(chunks)
+                #except:
+                    # print("arguments to \"file\" incomplete")
+                    # print("enter \"help\"")
 
-                    for i in range(2,no_clients+2):
-                        to_clients = to_clients + cmd[i] + " "
 
-                    to_clients = to_clients.strip()
-                    file_name = cmd[len(cmd)-1]
-                    try:
-                        f = open(file_name,'r')
-                        file_data = f.read()
-                        tmp = str(no_clients) + " " + to_clients + " " + file_name + " <delimtter>" + file_data
-
-                        req = util.make_message("send_file",4,tmp)
-                        packet = util.make_packet("data",0,req)
-                    
-                        f.close()
-                        self.send_req(packet)
-                    except:
-                        print("file not found")
-                except:
-                    print("arguments to \"file\" incomplete")
-                    print("enter \"help\"")
 
             elif cmd_type == "help":
                 print("Message:\nFormat: msg <number_of_users> <username1> <username2> ... <message>")
@@ -262,6 +385,7 @@ class Client:
                 p_type,seqno,res,checksum = util.parse_packet(packet.decode("utf-8"))
                 if(p_type=="ack"):
                     self.ack_buffer = int(seqno)
+                    self.ack_queue.put(int(seqno))
                     print(self.ack_buffer)
                 if p_type != "ack":
                     self.packet_buff[seqno] = packet.decode("utf-8")
