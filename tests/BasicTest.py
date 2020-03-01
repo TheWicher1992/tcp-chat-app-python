@@ -119,7 +119,7 @@ class BasicTest(object):
                 lines = list(map(lambda x: x.lower(), f.read().split('\n')))
             for each_line in clients_out[client]:
                 if each_line.lower() not in lines:
-                    print("Test Failed: Client output is not correct",each_line,lines)
+                    print("Test Failed: Client output is not correct")#,each_line,lines)
                     return False
         
         # Checking Output of Server Messages

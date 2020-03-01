@@ -5,14 +5,15 @@ import subprocess
 import time
 import random
 import util
-from tests import BasicTest, BasicFunctionalityTest, PacketLossTest, DuplicatePacketsTest, OutOfOrderPacketsTest
+from tests import BasicTest, BasicFunctionalityTest, PacketLossTest, DuplicatePacketsTest, OutOfOrderPacketsTest,WindowSizeTest
 import signal
 
 def tests_to_run(forwarder):
-    BasicFunctionalityTest.BasicFunctionalityTest(forwarder, "BasicFunctionality")
-    PacketLossTest.PacketLossTest(forwarder, "PacketLoss")
+    #BasicFunctionalityTest.BasicFunctionalityTest(forwarder, "BasicFunctionality")
+    #PacketLossTest.PacketLossTest(forwarder, "PacketLoss")
     DuplicatePacketsTest.DuplicatePacketsTest(forwarder, "DuplicatePackets")
-    OutOfOrderPacketsTest.OutOfOrderPacketsTest(forwarder,"OutOfOrderPackets")
+    #OutOfOrderPacketsTest.OutOfOrderPacketsTest(forwarder,"OutOfOrderPackets")
+    #WindowSizeTest.WindowSizeTest(forwarder,'WindowSize')
 class Forwarder(object):
     def __init__(self, sender_path, receiver_path, port):
         if not os.path.exists(sender_path):
